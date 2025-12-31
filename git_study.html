@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git 基本操作ガイド - チーム開発の第一歩</title>
+    <meta name="description" content="Gitの基本概念から主要コマンド、ワークフローまでを学ぶ勉強会用資料です。">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary-color: #475569;
+            --background-color: #f8fafc;
+            --surface-color: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #f43f5e;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+            --border-color: #e2e8f0;
+            --spacing-unit: 1.5rem;
+            --max-width: 900px;
+            --slide-height: 750px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            /* Prevent body scroll, handle in slides */
+        }
+
+        /* Container for the presentation */
+        .presentation-container {
+            width: 100%;
+            max-width: var(--max-width);
+            height: var(--slide-height);
+            background-color: var(--surface-color);
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Slide Area */
+        .slides-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 3rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            transform: translateX(20px);
+            overflow-y: auto;
+            /* Allow scroll within slide if content exceeds 750px visually but kept in container */
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            z-index: 10;
+        }
+
+        /* Header within slide */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+        }
+
+        ul {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            color: var(--secondary-color);
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Components */
+        .command-block {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.9rem;
+            margin: 0.75rem 0;
+            overflow-x: auto;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .term-card {
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+
+        .term-card strong {
+            display: block;
+            color: var(--primary-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .workflow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            background: #fff;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+
+        .step-number {
+            background-color: var(--primary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Controls */
+        .controls {
+            height: 70px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            background-color: #fff;
+            z-index: 20;
+        }
+
+        .btn {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        .progress {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Title Slide Specifics */
+        .slide.title-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: radial-gradient(circle at top right, #eff6ff, #fff);
+        }
+
+        .title-slide p {
+            font-size: 1.25rem;
+            max-width: 600px;
+        }
+
+        @media (max-width: 640px) {
+            .slide {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .controls {
+                padding: 0 1rem;
+            }
+
+            :root {
+                --slide-height: 100vh;
+            }
+
+            .presentation-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="presentation-container">
+        <div class="slides-wrapper">
+
+            <!-- Slide 1: Title -->
+            <div class="slide active title-slide">
+                <h1>Git Basic Study</h1>
+                <p>チーム開発の必須スキル「Git」の基本操作をマスターしよう</p>
+                <div style="margin-top: 2rem; font-size: 3rem; color: #cbd5e1;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="6" y1="3" x2="6" y2="15"></line>
+                        <circle cx="18" cy="6" r="3"></circle>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <path d="M18 9a9 9 0 0 1-9 9"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Slide 2: Intro -->
+            <div class="slide">
+                <h2>1. はじめに</h2>
+                <p>Gitは、プログラムの変更履歴を記録する<strong>分散型バージョン管理システム</strong>です。</p>
+                <div class="term-card">
+                    <strong>Gitを使うメリット</strong>
+                    <ul>
+                        <li>「誰が」「いつ」「何を」変更したか履歴が残るため、原因究明が容易。</li>
+                        <li>間違えても過去の状態にいつでも戻せる安心感。</li>
+                        <li>ブランチ機能により、チームで並行して安全に開発が進められる。</li>
+                    </ul>
+                </div>
+                <h3 style="margin-top:2rem">GitHubとは？</h3>
+                <p>Gitのリポジトリをオンラインでホスティングするサービス。世界中の開発者が利用しており、コードレビューやタスク管理の機能も充実しています。</p>
+            </div>
+
+            <!-- Slide 3: Terms -->
+            <div class="slide">
+                <h2>2. 基本用語</h2>
+                <div class="term-card">
+                    <strong>📁 リポジトリ (Repository)</strong>
+                    ファイルやその変更履歴を保存する場所。<br>
+                    <small>ローカルリポジトリ（自分のPC）とリモートリポジトリ（GitHub等）があります。</small>
+                </div>
+                <div class="term-card">
+                    <strong>🌲 ワークツリー (Work Tree)</strong>
+                    実際に作業している手元のディレクトリ。ここでファイルを編集します。
+                </div>
+                <div class="term-card">
+                    <strong>📦 ステージングエリア (Index)</strong>
+                    コミットする「準備」をする場所。変更したファイルのうち、どれを記録するかを選別します。
+                </div>
+                <div class="term-card">
+                    <strong>💾 コミット (Commit)</strong>
+                    ステージングされた変更をリポジトリに永久記録する操作。
+                </div>
+            </div>
+
+            <!-- Slide 4: Basic Commands 1 -->
+            <div class="slide">
+                <h2>3. 基本コマンド (1/2)</h2>
+
+                <h3>リポジトリの準備</h3>
+                <p>新規作成、または既存プロジェクトのコピー。</p>
+                <div class="command-block">git init</div>
+                <div class="command-block">git clone [URL]</div>
+
+                <h3>状態の確認</h3>
+                <p>「今どうなってる？」と思ったら迷わずこれ。</p>
+                <div class="command-block">git status</div>
+
+                <h3>変更の記録フロー</h3>
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <div>ファイルを作成・編集する</div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <div>
+                        ステージングに追加
+                        <div class="command-block">git add [ファイル名]</div>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <div>
+                        コミット（メッセージ付き）
+                        <div class="command-block">git commit -m "機能追加"</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: Basic Commands 2 -->
+            <div class="slide">
+                <h2>3. 基本コマンド (2/2)</h2>
+
+                <h3>履歴を確認する</h3>
+                <div class="command-block">git log</div>
+                <p>コミットハッシュ、作者、日時、メッセージが表示されます。</p>
+
+                <h3>変更の取り消し (Tips)</h3>
+                <p>ステージングの取り消し（コミット前）</p>
+                <div class="command-block">git reset HEAD [ファイル]</div>
+                <p>ファイルの変更を元に戻す（編集内容破棄）</p>
+                <div class="command-block">git checkout -- [ファイル]</div>
+            </div>
+
+            <!-- Slide 6: Branching -->
+            <div class="slide">
+                <h2>4. ブランチ操作</h2>
+                <p>本流（main）から分岐して作業するための機能です。</p>
+
+                <h3>ブランチ一覧 & 現在地確認</h3>
+                <div class="command-block">git branch</div>
+
+                <h3>新しいブランチを作って切り替える</h3>
+                <div class="command-block">git checkout -b [新ブランチ名]</div>
+
+                <h3>ブランチを切り替える</h3>
+                <div class="command-block">git checkout [ブランチ名]</div>
+
+                <h3>マージ (統合)</h3>
+                <p>作業が終わったら main ブランチなどに統合します。</p>
+                <div class="command-block">git checkout main</div>
+                <div class="command-block">git merge [作業ブランチ名]</div>
+            </div>
+
+            <!-- Slide 7: Remote -->
+            <div class="slide">
+                <h2>5. リモート操作</h2>
+
+                <h3>Push (送信)</h3>
+                <p>ローカルのコミットをリモートへ送ります。</p>
+                <div class="command-block">git push origin [ブランチ名]</div>
+
+                <h3>Pull (取得)</h3>
+                <p>リモートの最新状態をローカルに取り込みます。</p>
+                <div class="command-block">git pull origin [ブランチ名]</div>
+
+                <div class="term-card" style="margin-top: 1rem;">
+                    <strong>⚠️ コンフリクト (競合)</strong>
+                    <p>同じファイルの同じ行を別々の人が編集した場合に発生。<br>Gitが自動でマージできないため、手動で修正して再度コミットする必要があります。</p>
+                </div>
+            </div>
+
+            <!-- Slide 8: Pull Request -->
+            <div class="slide">
+                <h2>6. プルリクエスト (Pull Request)</h2>
+                <p>自分の変更を「取り込んでください（Pull）」とリクエストする機能です。</p>
+
+                <div class="term-card">
+                    <strong>チーム開発の要</strong>
+                    <ul>
+                        <li><strong>コードレビュー</strong>: バグや設計ミスがないか他人がチェックできる。</li>
+                        <li><strong>ディスカッション</strong>: 実装内容についてコメントで議論ができる。</li>
+                        <li><strong>品質担保</strong>: テストなどをパスしないとマージできないように制限できる。</li>
+                    </ul>
+                </div>
+
+                <h3>一般的な流れ</h3>
+                <div style="background:#fff; padding:1rem; border-radius:8px; border:1px solid #e2e8f0;">
+                    <ol style="margin-left: 1.5rem; color: #475569;">
+                        <li>作業ブランチをGitHubへPush</li>
+                        <li>GitHub画面で「Create Pull Request」ボタンを押す</li>
+                        <li>レビュワー（担当者）を指定して依頼</li>
+                        <li>指摘があれば直してPush (PRに自動反映されます)</li>
+                        <li>承認(Approve)されたらマージボタンを押す</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Slide 9: Workflow -->
+            <div class="slide">
+                <h2>7. 実践ワークフロー</h2>
+                <p>一般的な開発の流れです。</p>
+
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <strong>最新の状態にする</strong>
+                        <br><code>git checkout main</code>
+                        <br><code>git pull origin main</code>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <strong>作業用ブランチを作成・切り替え</strong>
+                        <br><code>git checkout -b feature/add-login</code>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <strong>コード編集 & テスト</strong>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <div>
+                        <strong>変更をステージング・コミット</strong>
+                        <br><code>git add .</code>
+                        <br><code>git commit -m "ログイン画面の実装"</code>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">5</div>
+                    <div>
+                        <strong>リモートへプッシュ</strong>
+                        <br><code>git push origin feature/add-login</code>
+                    </div>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">6</div>
+                    <div>
+                        <strong>Pull Request (PR) を作成</strong>
+                        <br>GitHub上でマージ依頼を出す
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 10: Summary -->
+            <div class="slide">
+                <h2>まとめ</h2>
+
+                <h3 style="text-align: center; margin-top: 2rem;">Git操作のゴールデンサイクル</h3>
+                <div
+                    style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 400px; margin: 1rem auto; padding: 1rem; background: #e0f2fe; border-radius: 8px;">
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="font-size:1.5rem">🔄</span>
+                        <div><strong>Pull</strong> (最新にする)</div>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="font-size:1.5rem">🌿</span>
+                        <div><strong>Branch</strong> (作業場所を作る)</div>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="font-size:1.5rem">✍️</span>
+                        <div><strong>Commit</strong> (こまめに記録)</div>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="font-size:1.5rem">🚀</span>
+                        <div><strong>Push</strong> (共有する)</div>
+                    </div>
+                </div>
+
+                <p style="text-align: center; margin-top: 2rem;">お疲れ様でした！<br>まずは <code>git status</code> を打つ癖から始めましょう。
+                </p>
+            </div>
+
+        </div>
+
+        <div class="controls">
+            <button id="prevBtn" class="btn">← Back</button>
+            <span class="progress" id="slideProgress">1 / 10</span>
+            <button id="nextBtn" class="btn btn-primary">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const progressDisplay = document.getElementById('slideProgress');
+
+            let currentSlide = 0;
+            const totalSlides = slides.length;
+
+            function updateSlide() {
+                // Update Slide Visibility
+                slides.forEach((slide, index) => {
+                    if (index === currentSlide) {
+                        slide.classList.add('active');
+                    } else {
+                        slide.classList.remove('active');
+                    }
+                });
+
+                // Update Progress Text
+                progressDisplay.textContent = `${currentSlide + 1} / ${totalSlides}`;
+
+                // Update Buttons State
+                prevBtn.disabled = currentSlide === 0;
+
+                if (currentSlide === totalSlides - 1) {
+                    nextBtn.textContent = 'Finish';
+                    nextBtn.classList.remove('btn-primary');
+                } else {
+                    nextBtn.textContent = 'Next →';
+                    nextBtn.classList.add('btn-primary');
+                }
+            }
+
+            function goToNext() {
+                if (currentSlide < totalSlides - 1) {
+                    currentSlide++;
+                    updateSlide();
+                }
+            }
+
+            function goToPrev() {
+                if (currentSlide > 0) {
+                    currentSlide--;
+                    updateSlide();
+                }
+            }
+
+            // Event Listeners
+            nextBtn.addEventListener('click', goToNext);
+            prevBtn.addEventListener('click', goToPrev);
+
+            // Keyboard Navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
+                    goToNext();
+                } else if (e.key === 'ArrowLeft') {
+                    goToPrev();
+                }
+            });
+
+            // Initial Update
+            updateSlide();
+        });
+    </script>
+</body>
+
+</html>
